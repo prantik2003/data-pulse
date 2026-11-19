@@ -23,6 +23,9 @@ class SheetConfig:
     sheet_name: str
     name_col: str
     date_col: str
+    incident_col: Optional[str] = None
+    sctask_col: Optional[str] = None
+    short_desc_col: Optional[str] = None
     is_active: bool = True
     detection_result: Optional[ColumnDetectionResult] = None
 
@@ -39,6 +42,7 @@ class ProcessingResult:
     
     excel_bytes: Optional[bytes] = None
     txt_report: Optional[str] = None
+    rtf_report: Optional[str] = None
 
 
 class ProcessingManager:
@@ -66,7 +70,12 @@ class ProcessingManager:
                 if s_data.is_empty or len(s_data.columns) == 0:
                     continue
 
-                detection = ColumnDetector.detect_columns(s_data.df, sample_size=sample_size)
+                detection = ColumnDetector.detect_columns(
+                    s_data.df,
+                    sample_size=sample_size,
+                    file_name=f_data.file_name,
+                    sheet_name=s_name,
+                )
                 
                 # Pick top column or first available column as fallback
                 fallback_name = detection.detected_name_col or (s_data.columns[0] if s_data.columns else "")
@@ -79,6 +88,9 @@ class ProcessingManager:
                     sheet_name=s_name,
                     name_col=fallback_name,
                     date_col=fallback_date,
+                    incident_col=detection.detected_incident_col,
+                    sctask_col=detection.detected_sctask_col,
+                    short_desc_col=detection.detected_short_desc_col,
                     is_active=True,
                     detection_result=detection,
                 )
@@ -181,6 +193,9 @@ class ProcessingManager:
                     date_preference=date_preference,
                     timezone_name=timezone_name,
                     column_context_day_first=day_first_hint,
+                    incident_col=s_config.incident_col,
+                    sctask_col=s_config.sctask_col,
+                    short_desc_col=s_config.short_desc_col,
                 )
 
                 all_matching.extend(sheet_res.matching_records)
@@ -236,6 +251,12 @@ class ProcessingManager:
             threshold_days=threshold_days,
         )
 
+        rtf_report = ExportGenerator.generate_rtf_report(
+            matching_records=all_matching,
+            processing_date=current_date,
+            threshold_days=threshold_days,
+        )
+
         return ProcessingResult(
             matching_records=all_matching,
             skipped_records=all_skipped,
@@ -244,4 +265,5 @@ class ProcessingManager:
             stats=stats,
             excel_bytes=excel_bytes,
             txt_report=txt_report,
+            rtf_report=rtf_report,
         )

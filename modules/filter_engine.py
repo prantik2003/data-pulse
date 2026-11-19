@@ -17,16 +17,19 @@ class Record:
     source_file: str
     source_sheet: str
     row_number: int
+    incident: str = ""
+    sctask: str = ""
+    short_description: str = ""
 
     def to_dict(self, date_format: str = "%d-%b-%Y") -> Dict[str, Any]:
         """Convert record to dictionary for display and report export."""
         return {
+            "Incident": self.incident,
+            "SCTask": self.sctask,
+            "Short Description": self.short_description,
             "Name": self.name,
             "Last Updated": self.last_updated.strftime(date_format),
-            "Days Difference": self.days_difference,
             "Source File": self.source_file,
-            "Source Sheet": self.source_sheet,
-            "Row Number": self.row_number,
         }
 
 
@@ -70,6 +73,9 @@ class FilterEngine:
         date_preference: str = "Auto-detect",
         timezone_name: str = "Asia/Kolkata",
         column_context_day_first: Optional[bool] = None,
+        incident_col: Optional[str] = None,
+        sctask_col: Optional[str] = None,
+        short_desc_col: Optional[str] = None,
     ) -> FilterResult:
         """Filter a list of rows for a single worksheet.
         
@@ -84,6 +90,9 @@ class FilterEngine:
             date_preference: Format preference for ambiguous dates
             timezone_name: Application timezone
             column_context_day_first: Hint inferred from column sample
+            incident_col: Optional column name for Incident ticket number
+            sctask_col: Optional column name for SCTask ticket number
+            short_desc_col: Optional column name for Short Description
             
         Returns:
             FilterResult containing matching records, skipped records, and errors.
@@ -119,6 +128,25 @@ class FilterEngine:
                     result.errors.append(val_res.error)
                 continue
 
+            # Extract incident, sctask, and short_description values
+            inc_val = ""
+            if incident_col and row.get(incident_col) is not None:
+                v = str(row.get(incident_col)).strip()
+                if v.lower() not in ("nan", "none", "null"):
+                    inc_val = v
+
+            sctask_val = ""
+            if sctask_col and row.get(sctask_col) is not None:
+                v = str(row.get(sctask_col)).strip()
+                if v.lower() not in ("nan", "none", "null"):
+                    sctask_val = v
+
+            desc_val = ""
+            if short_desc_col and row.get(short_desc_col) is not None:
+                v = str(row.get(short_desc_col)).strip()
+                if v.lower() not in ("nan", "none", "null"):
+                    desc_val = v
+
             record = Record(
                 name=val_res.clean_name,
                 last_updated=val_res.parsed_date,
@@ -126,6 +154,9 @@ class FilterEngine:
                 source_file=source_file,
                 source_sheet=source_sheet,
                 row_number=row_num,
+                incident=inc_val,
+                sctask=sctask_val,
+                short_description=desc_val,
             )
 
             # Filtering Condition: STRICTLY GREATER THAN threshold

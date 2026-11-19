@@ -36,6 +36,10 @@ class ColumnDetectionResult:
     date_status: str = "unmatched"  # 'high', 'medium', 'low', 'unmatched'
     date_candidates: List[ColumnCandidate] = field(default_factory=list)
 
+    detected_incident_col: Optional[str] = None
+    detected_sctask_col: Optional[str] = None
+    detected_short_desc_col: Optional[str] = None
+
     needs_confirmation: bool = False
     confirmation_reason: Optional[str] = None
 
@@ -48,12 +52,16 @@ class ColumnDetector:
         cls,
         df: pd.DataFrame,
         sample_size: int = 50,
+        file_name: str = "",
+        sheet_name: str = "",
     ) -> ColumnDetectionResult:
         """Analyze DataFrame columns using both semantic header matching and value inspection.
         
         Args:
             df: The worksheet DataFrame.
             sample_size: Number of non-empty rows to sample for content validation.
+            file_name: Optional file name for contextual disambiguation.
+            sheet_name: Optional sheet name for contextual disambiguation.
             
         Returns:
             ColumnDetectionResult containing top detected columns, confidence levels, and candidate rankings.
@@ -66,6 +74,9 @@ class ColumnDetector:
                 detected_date_col=None,
                 date_confidence=0.0,
                 date_status="unmatched",
+                detected_incident_col=None,
+                detected_sctask_col=None,
+                detected_short_desc_col=None,
                 needs_confirmation=True,
                 confirmation_reason="The sheet contains no data or columns.",
             )
@@ -137,6 +148,70 @@ class ColumnDetector:
 
         confirmation_reason = " | ".join(reasons) if reasons else None
 
+        # Detect Short Description Column
+        detected_short_desc_col: Optional[str] = None
+        best_desc_score = 0.0
+        for col in columns:
+            col_str = str(col)
+            if best_name and col_str == best_name.column_name:
+                continue
+            if best_date and col_str == best_date.column_name:
+                continue
+            norm = normalize_header(col_str)
+            score = 0.0
+            if norm in Settings.SHORT_DESCRIPTION_KEYWORDS:
+                score = 1.0
+            elif "description" in norm or "desc" in norm or "summary" in norm or "subject" in norm:
+                score = 0.85
+            elif any(fuzz.partial_ratio(norm, kw) >= 85 for kw in Settings.SHORT_DESCRIPTION_KEYWORDS):
+                score = 0.70
+
+            if score > best_desc_score:
+                best_desc_score = score
+                detected_short_desc_col = col_str
+
+        # Detect Incident and SCTask Columns
+        detected_incident_col: Optional[str] = None
+        detected_sctask_col: Optional[str] = None
+        file_sheet_context = f"{file_name} {sheet_name}".lower()
+        is_inc_context = any(term in file_sheet_context for term in ["incident", "inc"])
+        is_sctask_context = any(term in file_sheet_context for term in ["sctask", "sc_task", "sc task", "task"])
+
+        for col in columns:
+            col_str = str(col)
+            if best_name and col_str == best_name.column_name:
+                continue
+            if best_date and col_str == best_date.column_name:
+                continue
+            if detected_short_desc_col and col_str == detected_short_desc_col:
+                continue
+
+            norm = normalize_header(col_str)
+            sample_vals = [str(v).strip() for v in cls._get_clean_sample(df[col], 30)]
+
+            has_inc_values = any(v.upper().startswith("INC") for v in sample_vals)
+            has_sctask_values = any(v.upper().startswith("SCTASK") or v.upper().startswith("TASK") for v in sample_vals)
+
+            if norm in Settings.INCIDENT_KEYWORDS or has_inc_values:
+                if detected_incident_col is None:
+                    detected_incident_col = col_str
+            elif norm in Settings.SCTASK_KEYWORDS or has_sctask_values:
+                if detected_sctask_col is None:
+                    detected_sctask_col = col_str
+            elif norm in ("number", "ticket", "ticket number", "ticket id", "id", "ticket no", "num", "task"):
+                if has_inc_values:
+                    if detected_incident_col is None:
+                        detected_incident_col = col_str
+                elif has_sctask_values:
+                    if detected_sctask_col is None:
+                        detected_sctask_col = col_str
+                elif is_inc_context:
+                    if detected_incident_col is None:
+                        detected_incident_col = col_str
+                elif is_sctask_context:
+                    if detected_sctask_col is None:
+                        detected_sctask_col = col_str
+
         return ColumnDetectionResult(
             detected_name_col=best_name.column_name if best_name else None,
             name_confidence=name_conf,
@@ -146,6 +221,9 @@ class ColumnDetector:
             date_confidence=date_conf,
             date_status=date_status,
             date_candidates=date_candidates,
+            detected_incident_col=detected_incident_col,
+            detected_sctask_col=detected_sctask_col,
+            detected_short_desc_col=detected_short_desc_col,
             needs_confirmation=needs_confirmation,
             confirmation_reason=confirmation_reason,
         )

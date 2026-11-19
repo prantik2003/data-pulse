@@ -178,9 +178,50 @@ class AppConfig:
         "deleted at",
     ])
     
+    # Incident Keywords (normalized form)
+    INCIDENT_KEYWORDS: List[str] = field(default_factory=lambda: [
+        "incident",
+        "incident number",
+        "incident id",
+        "inc",
+        "inc number",
+        "incident no",
+        "incident identifier",
+    ])
+
+    # SCTask / Catalog Task Keywords (normalized form)
+    SCTASK_KEYWORDS: List[str] = field(default_factory=lambda: [
+        "sctask",
+        "sc task",
+        "sctask number",
+        "sc task number",
+        "task number",
+        "task id",
+        "task no",
+        "catalog task",
+        "service catalog task",
+        "sc_task",
+    ])
+
+    # Short Description Keywords (normalized form)
+    SHORT_DESCRIPTION_KEYWORDS: List[str] = field(default_factory=lambda: [
+        "short description",
+        "short desc",
+        "description",
+        "summary",
+        "brief description",
+        "issue description",
+        "task description",
+        "incident description",
+        "details",
+        "subject",
+        "title",
+    ])
+
     # Default Export File Names
     DEFAULT_EXCEL_FILENAME: str = "filtered_records.xlsx"
     DEFAULT_TXT_FILENAME: str = "filtered_records.txt"
+    DEFAULT_RTF_FILENAME: str = "filtered_records.rtf"
 
 
 # Singleton instance
