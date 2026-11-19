@@ -216,6 +216,10 @@ class ProcessingManager:
             if file_had_active_sheet:
                 total_files_processed += 1
 
+        # Deduplicate matching and skipped records across files and sheets
+        all_matching = FilterEngine.deduplicate_records(all_matching)
+        all_skipped = FilterEngine.deduplicate_records(all_skipped)
+
         # Calculate error categories
         invalid_date_count = sum(1 for e in all_errors if e.error_category == ErrorCategory.INVALID_DATE)
         missing_date_count = sum(1 for e in all_errors if e.error_category == ErrorCategory.MISSING_DATE)

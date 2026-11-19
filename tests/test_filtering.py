@@ -182,3 +182,44 @@ class TestFilteringLogic:
         cal_date = to_calendar_date(dt, "Asia/Kolkata")
         assert cal_date == datetime.date(2026, 11, 7)
         assert (self.REF_DATE - cal_date).days == 6
+
+    def test_deduplicate_records_merges_source_files(self):
+        from modules.filter_engine import Record
+
+        r1 = Record(
+            name="Sambit Chakraborty",
+            last_updated=datetime.date(2026, 11, 3),
+            days_difference=11,
+            source_file="incident (2).xlsx",
+            source_sheet="Page 1",
+            row_number=2,
+            incident="INC27334682",
+            short_description="Environmental reports do not work",
+        )
+        r2 = Record(
+            name="Sambit Chakraborty",
+            last_updated=datetime.date(2026, 11, 3),
+            days_difference=11,
+            source_file="incident.csv",
+            source_sheet="Sheet1",
+            row_number=5,
+            incident="INC27334682",
+            short_description="Environmental reports do not work",
+        )
+        r3 = Record(
+            name="Amol Kusalkar",
+            last_updated=datetime.date(2026, 10, 28),
+            days_difference=17,
+            source_file="incident.csv",
+            source_sheet="Sheet1",
+            row_number=6,
+            incident="INC27712210",
+            short_description="Issue migrating LIMS CR",
+        )
+
+        deduped = FilterEngine.deduplicate_records([r1, r2, r3])
+        assert len(deduped) == 2
+        assert deduped[0].incident == "INC27334682"
+        assert deduped[0].source_file == "incident (2).xlsx, incident.csv"
+        assert deduped[1].incident == "INC27712210"
+        assert deduped[1].source_file == "incident.csv"

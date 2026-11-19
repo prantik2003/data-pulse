@@ -170,3 +170,56 @@ class FilterEngine:
                 result.skipped_records.append(record)
 
         return result
+
+    @staticmethod
+    def deduplicate_records(records: List[Record]) -> List[Record]:
+        """Deduplicate records having the same ticket ID, description, name, and date.
+        
+        When duplicate records appear across different source files or sheets, merges them
+        into a single consolidated record where the 'source_file' column lists all unique
+        originating filenames separated by commas (e.g. 'incident (2).xlsx, incident.csv').
+        """
+        seen: Dict[Any, Record] = {}
+        deduped: List[Record] = []
+
+        for r in records:
+            inc = (r.incident or "").strip().upper()
+            sct = (r.sctask or "").strip().upper()
+            desc = " ".join((r.short_description or "").strip().split()).lower()
+            name = " ".join((r.name or "").strip().split()).lower()
+            date = r.last_updated
+            key = (inc, sct, desc, name, date)
+
+            if key in seen:
+                existing = seen[key]
+                # Merge source_file unique list
+                exist_files = [f.strip() for f in (existing.source_file or "").split(",") if f.strip()]
+                new_files = [f.strip() for f in (r.source_file or "").split(",") if f.strip()]
+                for nf in new_files:
+                    if nf not in exist_files:
+                        exist_files.append(nf)
+                existing.source_file = ", ".join(exist_files)
+
+                # Merge source_sheet unique list
+                exist_sheets = [s.strip() for s in (existing.source_sheet or "").split(",") if s.strip()]
+                new_sheets = [s.strip() for s in (r.source_sheet or "").split(",") if s.strip()]
+                for ns in new_sheets:
+                    if ns not in exist_sheets:
+                        exist_sheets.append(ns)
+                existing.source_sheet = ", ".join(exist_sheets)
+            else:
+                r_copy = Record(
+                    name=r.name,
+                    last_updated=r.last_updated,
+                    days_difference=r.days_difference,
+                    source_file=r.source_file,
+                    source_sheet=r.source_sheet,
+                    row_number=r.row_number,
+                    incident=r.incident,
+                    sctask=r.sctask,
+                    short_description=r.short_description,
+                )
+                seen[key] = r_copy
+                deduped.append(r_copy)
+
+        return deduped
