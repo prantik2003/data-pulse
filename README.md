@@ -1,117 +1,74 @@
-# DataPulse – Intelligent Excel & CSV Processing
+# DataPulse – Intelligent Ticket & Data Processing
 
-DataPulse is a Python-based Streamlit application that processes multiple Excel and CSV files, automatically detects Name and Last Updated Date columns, and identifies outdated records.
+DataPulse is a Streamlit application that processes multiple Excel and CSV files, automatically detects ticket columns, and extracts records inactive for **more than 5 calendar days** (`Days Difference > 5`).
 
-**Primary Rule:** Records are included only when they have not been updated for more than 5 calendar days.
+---
 
 ## 🚀 Features
 
-- Upload multiple Excel (`.xlsx`) and CSV (`.csv`) files.
-- Process multiple worksheets independently.
-- Automatically detect Name and Date columns using fuzzy matching and content validation.
-- Support multiple date formats, Excel serial dates, and timezone conversion.
-- Customize column mappings, date preferences, timezone, and aging threshold.
-- View matching records, skipped records, and processing errors.
-- Export filtered records to Excel and TXT files.
-- Preview reports before downloading.
-- Secure in-memory file processing.
+- **Multi-File & Multi-Sheet**: Ingests multiple `.xlsx` and `.csv` files and processes worksheets independently.
+- **Zero-Config Column Detection**: Automatically detects Name, Last Updated Date, Incident number, SCTask number, and Short Description.
+- **Separated Ticket Sections**: Groups records into distinct **Incidents** and **SCTasks** tables in both the UI and exports.
+- **Modern Dark UI**: Features glassmorphism styling, `streamlit-shadcn-ui`, and 6 color-coded KPI cards (Files, Sheets, Examined, Matching, Skipped, and Issues).
+- **Dual Export Formats**:
+  - **Excel (`.xlsx`)**: Formatted multi-table workbook with auto-fit widths and formula injection protection.
+  - **Rich Text (`.rtf`)**: Native Word/WordPad document tables that eliminate plain-text font and wrapping misalignments.
+- **Interactive Previews**: Modal dialogs to inspect both Excel and RTF outputs before downloading.
+- **100% In-Memory**: Zero-disk storage for maximum data privacy.
+
+---
 
 ## 🛠️ Tech Stack
 
-- Python 3.11+
-- Streamlit
-- Pandas
-- OpenPyXL
-- RapidFuzz
-- python-dateutil
-- Pytest
+- **Python**: 3.11+
+- **Frontend**: Streamlit, `streamlit-shadcn-ui`
+- **Data & Export**: Pandas, OpenPyXL, RTF generator
+- **Parsing & Matching**: RapidFuzz, `python-dateutil`, `pytz`
+- **Testing**: Pytest (55 tests)
 
-## 📁 Project Structure
+---
 
-text
-
-```text
-smart-data-filter/
-├── app.py
-├── config/
-├── modules/
-├── utils/
-├── tests/
-├── sample_data/
-├── .streamlit/
-├── requirements.txt
-└── README.md
-```
-
-## ⚙️ Installation
-
-bash
+## ⚙️ Quick Start
 
 ```bash
+# Clone repository
 git clone <repository-url>
-cd smart-data-filter
+cd cog_proj_2
 
+# Setup virtual environment
 python -m venv .venv
-```
+.venv\Scripts\activate   # Windows
+# source .venv/bin/activate  # macOS/Linux
 
-Activate the virtual environment:
-
-bash
-
-```bash
-# macOS/Linux
-source .venv/bin/activate
-
-# Windows
-.venv\Scripts\activate
-```
-
-Install dependencies:
-
-bash
-
-```bash
+# Install dependencies & run
 pip install -r requirements.txt
-```
-
-## ▶️ Run Application
-
-bash
-
-```bash
 streamlit run app.py
 ```
+Open **`http://localhost:8501`** in your browser.
 
-Open `http://localhost:8501` in your browser.
+---
 
 ## 📖 Usage
 
-1. Upload Excel or CSV files.
-2. Review and configure detected column mappings.
-3. Set the date threshold and other preferences.
-4. Click **Process Records**.
-5. Review results and download Excel or TXT reports.
+1. **Upload & Filter**: Drop Excel/CSV files, set threshold (default: 5 days), and click **Process Records**.
+2. **Review Summary**: View KPI metrics and review separated Incident and SCTask tables.
+3. **Download**: Click **👁️ View Output** to preview, then download **`.xlsx`** or **`.rtf`** reports.
+
+---
 
 ## 📅 Filtering Logic
 
-python
+$$\text{Days Difference} = \text{Reference Date} - \text{Last Updated Date}$$
 
-```python
-Days Difference = Reference Date - Last Updated Date
+- **$> 5$ days**: Included (matching).
+- **$\le 5$ days**: Excluded (skipped).
+- **Future / Invalid dates**: Logged as errors with row and sheet traceability.
 
-Include if Days Difference > 5
-```
-
-- 0–5 days: Excluded.
-- 6+ days: Included.
-- Future dates: Logged as errors.
+---
 
 ## 🧪 Testing
 
-The project includes 51 automated tests covering column detection, date parsing, filtering, file processing, and report generation.
-
-bash
-
+Run the 55 automated tests:
 ```bash
 python -m pytest tests/ -v
 ```
